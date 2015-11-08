@@ -34,6 +34,11 @@ var EventEmitter = Terminal.EventEmitter
   , cancel = Terminal.cancel;
 
 /**
+ * lock
+ */
+var lock = new Auth0Lock('mxx0nXeiWtGozSiGwRAPiUnsGMnxwgzV', 'twilson63.auth0.com');
+
+/**
  * tty
  */
 
@@ -71,7 +76,8 @@ tty.open = function() {
     body: document.body,
     h1: document.getElementsByTagName('h1')[0],
     open: document.getElementById('open'),
-    lights: document.getElementById('lights')
+    lights: document.getElementById('lights'),
+    logout: document.getElementById('logout')
   };
 
   root = tty.elements.root;
@@ -79,6 +85,7 @@ tty.open = function() {
   h1 = tty.elements.h1;
   open = tty.elements.open;
   lights = tty.elements.lights;
+  logout = tty.elements.logout;
 
   if (open) {
     on(open, 'click', function() {
@@ -90,6 +97,14 @@ tty.open = function() {
     on(lights, 'click', function() {
       tty.toggleLights();
     });
+  }
+  tty.toggleLights();
+
+  if (logout) {
+    on(logout, 'click', function() {
+      localStorage.removeItem('id_token')
+      lock.showSignin()
+    })
   }
 
   tty.socket.on('connect', function() {
@@ -896,6 +911,29 @@ function load() {
 
   off(document, 'load', load);
   off(document, 'DOMContentLoaded', load);
+
+  // show auth
+  document.querySelector('#open').visibility = 'hidden';
+  document.querySelector('#logout').visibility = 'hidden';
+
+  var hash = lock.parseHash(window.location.hash);
+
+  if (hash && hash.id_token) {
+    window.location.hash = '';
+    //save the token in the session:
+    localStorage.setItem('id_token', hash.id_token);
+    document.querySelector('#open').visibility = 'visible';
+    document.querySelector('#logout').visibility = 'visible';
+  } else if (localStorage.getItem('id_token')) {
+    document.querySelector('#open').visibility = 'visible';
+    document.querySelector('#logout').visibility = 'visible';
+  } else {
+    lock.showSignin({ authParams: { scope: 'openid' } });
+  }
+
+  if (hash && hash.error) {
+    alert('There was an error: ' + hash.error + '\n' + hash.error_description);
+  }
   tty.open();
 }
 
